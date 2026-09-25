@@ -1,13 +1,13 @@
 [Setup]
 AppId={{7C57A2F5-8D4D-4C3D-9C4B-0A1320260925}
 AppName=OTL Scadentar
-AppVersion=4.0
+AppVersion=4.1
 AppPublisher=Octav Transport Logistic
 DefaultDirName={autopf}\OTL Scadentar
 DefaultGroupName=OTL Scadentar
 UninstallDisplayName=OTL Scadentar
 OutputDir=..\output
-OutputBaseFilename=OTL_Scadentar_Setup_4.0
+OutputBaseFilename=OTL_Scadentar_Setup_4.1
 Compression=lzma2
 SolidCompression=yes
 PrivilegesRequired=admin

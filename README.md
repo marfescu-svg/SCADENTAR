@@ -1,15 +1,17 @@
-# OTL Scadentar 4.0
+# OTL Scadentar 4.1
 
-Versiune cu interfata profesionala OTL, dashboard si grafice integrate.
+Aplicatie Windows pentru control financiar OTL.
 
-## Noutati
-- dashboard cu 3 grafice calculate din datele reale;
-- evolutie lunara a sumelor neplatite;
-- situatie facturi: platite / scadente / in termen;
-- top 5 transportatori dupa soldul neplatit;
-- butoane cu aspect reliefat / 3D;
-- formular Factura noua restilizat;
-- pastreaza filtrele, importul Excel, backup, restaurare si regulile de scadenta din versiunea 2.4;
-- baza de date ramane in Documents\\ScadentarTransportatori si nu este stearsa la upgrade.
+## Module
+- Transportatori - de platit
+- Clienti - de incasat
+- Incasari integrale sau partiale
+- Facturile incasate dispar implicit din lista activa, dar raman in istoric
+- Import balanta clienti din CSV/TXT cu coloanele: Client;Factura;Data;Suma
+- Reimportul actualizeaza factura fara sa stearga incasarile introduse manual
+- Dashboard si grafice pentru transportatori
+- Backup pentru baza principala
 
-GitHub Actions genereaza `OTL_Scadentar_Setup_4.0.exe`.
+Datele sunt pastrate in Documents\ScadentarTransportatori.
+
+GitHub Actions genereaza OTL_Scadentar_Setup_4.1.exe.
