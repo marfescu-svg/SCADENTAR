@@ -34,7 +34,8 @@ jobs:
           "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "installer\OTL-Scadentar.iss"
 
       - name: Salveaza installerul
-        uses: actions/upload-artifact@v4
-        with:
-          name: OTL-Scadentar-Setup-3.2
-          path: output/OTL_Scadentar_Setup_3.2.exe
+  uses: actions/upload-artifact@v4
+  with:
+    name: OTL-Scadentar-Setup-4.0
+    path: output/OTL_Scadentar_Setup_4.0.exe
+    if-no-files-found: error
