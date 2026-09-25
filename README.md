@@ -1,17 +1,18 @@
-# OTL Scadentar 4.1
+# OTL Scadentar 4.2
 
 Aplicatie Windows pentru control financiar OTL.
 
-## Module
-- Transportatori - de platit
-- Clienti - de incasat
-- Incasari integrale sau partiale
-- Facturile incasate dispar implicit din lista activa, dar raman in istoric
-- Import balanta clienti din CSV/TXT cu coloanele: Client;Factura;Data;Suma
-- Reimportul actualizeaza factura fara sa stearga incasarile introduse manual
-- Dashboard si grafice pentru transportatori
-- Backup pentru baza principala
+## Nou in 4.2
+- Modul Clienti - De incasat cu buton `IMPORTA BALANTA`.
+- Import direct PDF pentru balantele generate de contabilitate. Conversia PDF este facuta local prin Microsoft Word; pentru PDF este necesar Microsoft Word instalat pe calculator.
+- Import CSV/TXT ramane disponibil prin acelasi buton.
+- Ecran de previzualizare inainte de import: facturi identificate, facturi noi, deja existente, total identificat si total nou.
+- Confirmare explicita inainte de modificarea bazei.
+- Reimportul nu dubleaza facturile si nu sterge incasarile introduse manual.
+- Incasari integrale sau partiale; facturile achitate integral dispar implicit din lista activa si raman in istoric.
 
-Datele sunt pastrate in Documents\ScadentarTransportatori.
+## Date
+Datele sunt pastrate separat de aplicatie in `Documents\ScadentarTransportatori`.
 
-GitHub Actions genereaza OTL_Scadentar_Setup_4.1.exe.
+## Build
+GitHub Actions trebuie sa genereze `OTL_Scadentar_Setup_4.2.exe`.
