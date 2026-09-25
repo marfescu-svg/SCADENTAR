@@ -1,6 +1,9 @@
-OTL Scadentar 4.2.2
-- Import PDF direct, local, fara Microsoft Word.
-- Motor PDF: iTextSharp 5.5.13.3, inclus in installer.
-- Parserul foloseste pozitia textului pentru coloana FACTURI FINAL.
-- Previzualizare inainte de salvare; incasarile manuale se pastreaza.
-- Workflow-ul GitHub foloseste wildcard pentru artifact, astfel versiunea nu mai trebuie schimbata in pasul de upload.
+OTL Scadentar 4.2.3
+
+Corectie build PDF:
+- GitHub Actions descarca iTextSharp 5.5.13.3 prin NuGet.
+- Compilarea referentiaza itextsharp.dll.
+- DLL-ul este copiat in dist si inclus in installer.
+- Artifact-ul foloseste wildcard, deci nu depinde de versiune.
+
+Installer rezultat: OTL_Scadentar_Setup_4.2.3.exe
