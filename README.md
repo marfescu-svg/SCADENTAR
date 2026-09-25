@@ -1,22 +1,6 @@
-# OTL Scadentar 4.2.1
-
-Aplicatie Windows pentru control financiar OTL.
-
-## Nou in 4.2.1
-- Modul Clienti - De incasat cu buton `IMPORTA BALANTA`.
-- Import direct PDF pentru balantele generate de contabilitate. Conversia PDF este facuta local prin Microsoft Word; pentru PDF este necesar Microsoft Word instalat pe calculator.
-- Import CSV/TXT ramane disponibil prin acelasi buton.
-- Ecran de previzualizare inainte de import: facturi identificate, facturi noi, deja existente, total identificat si total nou.
-- Confirmare explicita inainte de modificarea bazei.
-- Reimportul nu dubleaza facturile si nu sterge incasarile introduse manual.
-- Incasari integrale sau partiale; facturile achitate integral dispar implicit din lista activa si raman in istoric.
-
-## Date
-Datele sunt pastrate separat de aplicatie in `Documents\ScadentarTransportatori`.
-
-## Build
-GitHub Actions trebuie sa genereze `OTL_Scadentar_Setup_4.2.1.exe`.
-
-
-## Fix 4.2.1
-Importul PDF ruleaza separat de interfata si are timeout de siguranta de 60 secunde, astfel incat aplicatia sa nu ramana blocata. Baza de date se modifica numai dupa previzualizare si confirmare.
+OTL Scadentar 4.2.2
+- Import PDF direct, local, fara Microsoft Word.
+- Motor PDF: iTextSharp 5.5.13.3, inclus in installer.
+- Parserul foloseste pozitia textului pentru coloana FACTURI FINAL.
+- Previzualizare inainte de salvare; incasarile manuale se pastreaza.
+- Workflow-ul GitHub foloseste wildcard pentru artifact, astfel versiunea nu mai trebuie schimbata in pasul de upload.

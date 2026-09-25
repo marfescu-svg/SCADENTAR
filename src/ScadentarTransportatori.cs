@@ -9,6 +9,8 @@ using System.Linq;
 using System.Windows.Forms;
 using System.Xml.Linq;
 using System.Xml.Serialization;
+using iTextSharp.text.pdf;
+using iTextSharp.text.pdf.parser;
 
 namespace ScadentarTransportatori {
 [Serializable] public class Invoice {
@@ -21,7 +23,7 @@ public class MainForm:Form {
  AppData data; string baseDir, dbFile, backupDir; ComboBox yearBox, transportBox; TextBox transportSearch; DataGridView grid; Label lblDue,lblTotal,lblTotalEur,lblDueEur,lblOld,lblCount; BindingList<Invoice> view=new BindingList<Invoice>(); bool refreshingYear=false, refreshingTransport=false, onlyDue=false; Button btnDue; DashboardChart chartMonthly, chartStatus, chartTop;
  public MainForm(){ Text="OTL - Scadentar Facturi Transportatori v2.4"; Width=1540; Height=900; MinimumSize=new Size(1200,700); BackColor=Color.FromArgb(236,242,247); StartPosition=FormStartPosition.CenterScreen; Font=new Font("Segoe UI",9F); baseDir=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),"ScadentarTransportatori"); dbFile=Path.Combine(baseDir,"scadentar.xml"); backupDir=Path.Combine(baseDir,"Backup"); Directory.CreateDirectory(baseDir); Directory.CreateDirectory(backupDir); LoadData(); BuildUi(); RefreshAll(); AutoBackup(); }
  void BuildUi(){
-  Text="OTL Scadentar 4.1 - Control Financiar";
+  Text="OTL Scadentar 4.2.2 - Control Financiar";
   var root=new TableLayoutPanel{Dock=DockStyle.Fill,ColumnCount=1,RowCount=5,Padding=new Padding(0),BackColor=Color.FromArgb(235,241,247)};
   root.RowStyles.Add(new RowStyle(SizeType.Absolute,100)); root.RowStyles.Add(new RowStyle(SizeType.Absolute,86)); root.RowStyles.Add(new RowStyle(SizeType.Absolute,58)); root.RowStyles.Add(new RowStyle(SizeType.Absolute,190)); root.RowStyles.Add(new RowStyle(SizeType.Percent,100)); Controls.Add(root);
 
@@ -116,51 +118,45 @@ public class ReceivablesForm:Form {
   if(Path.GetExtension(o.FileName).Equals(".pdf",StringComparison.OrdinalIgnoreCase)) ImportPdfBalanta(o.FileName); else ImportCsvFile(o.FileName,true);
  }
  void ImportPdfBalanta(string path){
-  // 4.2.1: conversia PDF ruleaza pe un fir STA separat. Interfata ramane activa,
-  // iar dupa 60 secunde importul este oprit controlat in loc sa blocheze aplicatia.
-  string txt=null,err=null,temp=Path.Combine(Path.GetTempPath(),"otl_balanta_"+Guid.NewGuid().ToString("N")+".txt");
-  bool done=false; var before=new HashSet<int>(System.Diagnostics.Process.GetProcessesByName("WINWORD").Select(p=>p.Id));
-  var wait=new Form{Text="OTL • Import balanta PDF",Width=430,Height=155,StartPosition=FormStartPosition.CenterParent,FormBorderStyle=FormBorderStyle.FixedDialog,MaximizeBox=false,MinimizeBox=false,ControlBox=false};
-  var info=new Label{Text="Se analizeaza balanta PDF...\nDocumentul este procesat local. Te rog asteapta.",AutoSize=false,Dock=DockStyle.Fill,TextAlign=ContentAlignment.MiddleCenter,Font=new Font("Segoe UI",10,FontStyle.Bold)}; wait.Controls.Add(info);
-  var worker=new System.Threading.Thread(()=>{
-   object word=null,doc=null;
-   try{
-    var t=Type.GetTypeFromProgID("Word.Application");
-    if(t==null)throw new Exception("Microsoft Word nu este instalat. Pentru PDF este necesar Word; poti importa si CSV/TXT.");
-    word=Activator.CreateInstance(t); t.InvokeMember("Visible",System.Reflection.BindingFlags.SetProperty,null,word,new object[]{false});
-    t.InvokeMember("DisplayAlerts",System.Reflection.BindingFlags.SetProperty,null,word,new object[]{0});
-    object docs=t.InvokeMember("Documents",System.Reflection.BindingFlags.GetProperty,null,word,null);
-    doc=docs.GetType().InvokeMember("Open",System.Reflection.BindingFlags.InvokeMethod,null,docs,new object[]{path,false,true});
-    doc.GetType().InvokeMember("SaveAs2",System.Reflection.BindingFlags.InvokeMethod,null,doc,new object[]{temp,2});
-    doc.GetType().InvokeMember("Close",System.Reflection.BindingFlags.InvokeMethod,null,doc,new object[]{false}); doc=null;
-    t.InvokeMember("Quit",System.Reflection.BindingFlags.InvokeMethod,null,word,new object[]{false}); word=null;
-    txt=File.ReadAllText(temp,System.Text.Encoding.Default);
-   }catch(Exception ex){err=ex.InnerException!=null?ex.InnerException.Message:ex.Message;}
-   finally{
-    try{if(doc!=null)doc.GetType().InvokeMember("Close",System.Reflection.BindingFlags.InvokeMethod,null,doc,new object[]{false});}catch{}
-    try{if(word!=null)word.GetType().InvokeMember("Quit",System.Reflection.BindingFlags.InvokeMethod,null,word,new object[]{false});}catch{}
-    try{if(File.Exists(temp))File.Delete(temp);}catch{}
-    done=true;
-   }
-  });
-  worker.IsBackground=true; worker.SetApartmentState(System.Threading.ApartmentState.STA); worker.Start();
-  var started=DateTime.Now; var timer=new System.Windows.Forms.Timer{Interval=250};
-  timer.Tick+=(s,e)=>{
-   if(done){timer.Stop();wait.Close();return;}
-   if((DateTime.Now-started).TotalSeconds>=60){
-    timer.Stop(); err="Importul PDF a depasit 60 de secunde si a fost oprit. Baza de date nu a fost modificata.";
-    try{foreach(var p in System.Diagnostics.Process.GetProcessesByName("WINWORD"))if(!before.Contains(p.Id))p.Kill();}catch{}
-    wait.Close();
-   }
-  };
-  timer.Start(); wait.ShowDialog(this); timer.Stop();
-  if(!done && err!=null){MessageBox.Show(err,"Import balanta PDF",MessageBoxButtons.OK,MessageBoxIcon.Warning);return;}
-  if(!string.IsNullOrWhiteSpace(err)){MessageBox.Show("Importul PDF nu a reusit: "+err+"\n\nBaza de date nu a fost modificata.","Import balanta PDF",MessageBoxButtons.OK,MessageBoxIcon.Error);return;}
+  // 4.2.2: citire PDF directa cu iTextSharp. Fara Word, fara conversie si fara timeout.
   try{
-   var rows=ParseAccountingBalanceText(txt);
-   if(rows.Count==0){MessageBox.Show("PDF-ul a fost citit, dar nu am putut identifica automat randurile din coloana FACTURI FINAL.\nNu s-a modificat baza de date.","Import balanta",MessageBoxButtons.OK,MessageBoxIcon.Warning);return;}
+   var rows=ReadBalancePdfDirect(path);
+   if(rows.Count==0){MessageBox.Show("PDF-ul a fost citit, dar nu am identificat facturi in coloana FACTURI FINAL.\nBaza de date nu a fost modificata.","Import balanta PDF",MessageBoxButtons.OK,MessageBoxIcon.Warning);return;}
    PreviewAndApply(rows,Path.GetFileName(path));
-  }catch(Exception ex){MessageBox.Show("Analiza PDF-ului nu a reusit: "+ex.Message+"\n\nBaza de date nu a fost modificata.","Import balanta PDF",MessageBoxButtons.OK,MessageBoxIcon.Error);}
+  }catch(Exception ex){MessageBox.Show("Importul PDF nu a reusit: "+ex.Message+"\n\nBaza de date nu a fost modificata.","Import balanta PDF",MessageBoxButtons.OK,MessageBoxIcon.Error);}
+ }
+ List<ReceivableItem> ReadBalancePdfDirect(string path){
+  var result=new List<ReceivableItem>(); string currentClient="";
+  using(var reader=new PdfReader(path)){
+   for(int page=1;page<=reader.NumberOfPages;page++){
+    var listener=new OtlPdfPositionListener();
+    PdfTextExtractor.GetTextFromPage(reader,page,listener);
+    float width=reader.GetPageSize(page).Width;
+    // Raportul contabil are coloanele: precedent | curent | incasari | FINAL | denumire.
+    // Selectam geometric FACTURI FINAL si DENUMIRE, nu dupa ordinea textului extras.
+    float finalLeft=width*0.485f, finalRight=width*0.580f, clientLeft=width*0.580f;
+    foreach(var line in listener.GetLines()){
+     string client=string.Join(" ",line.Where(c=>c.X>=clientLeft).OrderBy(c=>c.X).Select(c=>c.Text)).Trim();
+     if(IsClientName(client)) currentClient=client;
+     if(string.IsNullOrWhiteSpace(currentClient))continue;
+     string fin=string.Join(" ",line.Where(c=>c.X>=finalLeft&&c.X<finalRight).OrderBy(c=>c.X).Select(c=>c.Text));
+     var ms=System.Text.RegularExpressions.Regex.Matches(fin,@"(?<f>\d{4,7}/\d+)\s+(?<d>\d{6})\s+(?<s>-?[\d\.]+,\d{2})");
+     foreach(System.Text.RegularExpressions.Match m in ms){
+      DateTime dt; decimal sum;
+      if(!DateTime.TryParseExact(m.Groups["d"].Value,"ddMMyy",CultureInfo.InvariantCulture,DateTimeStyles.None,out dt))continue;
+      if(!decimal.TryParse(m.Groups["s"].Value.Replace(".","").Replace(",","."),NumberStyles.Any,CultureInfo.InvariantCulture,out sum)||sum<=0)continue;
+      string fact=m.Groups["f"].Value;
+      if(!result.Any(x=>Eq(x.Client,currentClient)&&Eq(x.Factura,fact)))result.Add(new ReceivableItem{Client=currentClient,Factura=fact,DataFactura=dt,SumaInitiala=sum,Observatii="Import balanta PDF"});
+     }
+    }
+   }
+  }
+  return result;
+ }
+ bool IsClientName(string s){
+  if(string.IsNullOrWhiteSpace(s)||s.Length<3)return false; string u=s.ToUpperInvariant();
+  if(u.Contains("DENUMIRE")||u.Contains("PAG:")||u.Contains("BALANTA")||u.Contains("OCTAV TRANSPORT"))return false;
+  return s.Any(char.IsLetter) && !System.Text.RegularExpressions.Regex.IsMatch(s,@"^[-+\d\s\.,/]+$");
  }
  List<ReceivableItem> ParseAccountingBalanceText(string text){
   var result=new List<ReceivableItem>(); if(string.IsNullOrWhiteSpace(text))return result;
@@ -226,4 +222,18 @@ static class Program{[STAThread]static void Main(){
   MessageBox.Show("Aplicatia nu a putut porni. Detaliile au fost salvate in Documents\\ScadentarTransportatori\\eroare.log\n\n"+ex.Message,"Scadentar Transportatori - Eroare",MessageBoxButtons.OK,MessageBoxIcon.Error);
  }
 }}
+public class OtlPdfChunk { public string Text; public float X; public float Y; public OtlPdfChunk(string t,float x,float y){Text=t;X=x;Y=y;} }
+public class OtlPdfPositionListener:IRenderListener {
+ List<OtlPdfChunk> chunks=new List<OtlPdfChunk>();
+ public void BeginTextBlock(){} public void EndTextBlock(){} public void RenderImage(ImageRenderInfo renderInfo){}
+ public void RenderText(TextRenderInfo r){var p=r.GetBaseline().GetStartPoint();chunks.Add(new OtlPdfChunk(r.GetText(),p[0],p[1]));}
+ public List<List<OtlPdfChunk>> GetLines(){
+  var lines=new List<List<OtlPdfChunk>>();
+  foreach(var c in chunks.OrderByDescending(x=>x.Y).ThenBy(x=>x.X)){
+   var line=lines.FirstOrDefault(l=>Math.Abs(l[0].Y-c.Y)<2.5f); if(line==null){line=new List<OtlPdfChunk>();lines.Add(line);} line.Add(c);
+  }
+  foreach(var l in lines)l.Sort((a,b)=>a.X.CompareTo(b.X)); return lines;
+ }
+}
+
 }

@@ -1,13 +1,13 @@
 [Setup]
 AppId={{7C57A2F5-8D4D-4C3D-9C4B-0A1320260925}
 AppName=OTL Scadentar
-AppVersion=4.2.1
+AppVersion=4.2.2
 AppPublisher=Octav Transport Logistic
 DefaultDirName={autopf}\OTL Scadentar
 DefaultGroupName=OTL Scadentar
 UninstallDisplayName=OTL Scadentar
 OutputDir=..\output
-OutputBaseFilename=OTL_Scadentar_Setup_4.2.1
+OutputBaseFilename=OTL_Scadentar_Setup_4.2.2
 Compression=lzma2
 SolidCompression=yes
 PrivilegesRequired=admin
@@ -18,6 +18,7 @@ WizardStyle=modern
 
 [Files]
 Source: "..\dist\OTL Scadentar.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\dist\itextsharp.dll"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{autoprograms}\OTL Scadentar"; Filename: "{app}\OTL Scadentar.exe"
