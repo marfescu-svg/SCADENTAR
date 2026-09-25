@@ -19,11 +19,78 @@ jobs:
       - name: Descarca proiectul
         uses: actions/checkout@v4
 
+      - name: Descarca iTextSharp
+        shell: powershell
+        run: |
+          New-Item -ItemType Directory -Force -Path "packages" | Out-Null
+
+          Invoke-WebRequest `
+            -Uri "https://www.nuget.org/api/v2/package/iTextSharp/5.5.13.3" `
+            -OutFile "packages\itextsharp.nupkg"
+
+          Expand-Archive `
+            -Path "packages\itextsharp.nupkg" `
+            -DestinationPath "packages\itextsharp" `
+            -Force
+
+          $dll = Get-ChildItem `
+            -Path "packages\itextsharp" `
+            -Filter "itextsharp.dll" `
+            -Recurse |
+            Select-Object -First 1
+
+          if (-not $dll) {
+            Write-Error "Nu am gasit itextsharp.dll."
+            exit 1
+          }
+
+          Copy-Item $dll.FullName "packages\itextsharp.dll" -Force
+
+          Write-Host "iTextSharp gasit:"
+          Write-Host $dll.FullName
+
       - name: Compileaza OTL Scadentar
         shell: cmd
         run: |
           if not exist dist mkdir dist
-          %WINDIR%\Microsoft.NET\Framework64\v4.0.30319\csc.exe /nologo /target:winexe /platform:x64 /optimize+ /out:"dist\OTL Scadentar.exe" /reference:System.dll /reference:System.Core.dll /reference:System.Windows.Forms.dll /reference:System.Drawing.dll /reference:System.Xml.dll /reference:System.Xml.Linq.dll /reference:System.IO.Compression.dll /reference:System.IO.Compression.FileSystem.dll /reference:Microsoft.VisualBasic.dll "src\ScadentarTransportatori.cs"
+
+          %WINDIR%\Microsoft.NET\Framework64\v4.0.30319\csc.exe ^
+          /nologo ^
+          /target:winexe ^
+          /platform:x64 ^
+          /optimize+ ^
+          /out:"dist\OTL Scadentar.exe" ^
+          /reference:System.dll ^
+          /reference:System.Core.dll ^
+          /reference:System.Windows.Forms.dll ^
+          /reference:System.Drawing.dll ^
+          /reference:System.Xml.dll ^
+          /reference:System.Xml.Linq.dll ^
+          /reference:System.IO.Compression.dll ^
+          /reference:System.IO.Compression.FileSystem.dll ^
+          /reference:Microsoft.VisualBasic.dll ^
+          /reference:"packages\itextsharp.dll" ^
+          "src\ScadentarTransportatori.cs"
+
+          if errorlevel 1 exit /b 1
+
+          copy /Y "packages\itextsharp.dll" "dist\itextsharp.dll"
+
+      - name: Verifica fisierele aplicatiei
+        shell: powershell
+        run: |
+          if (-not (Test-Path "dist\OTL Scadentar.exe")) {
+            Write-Error "OTL Scadentar.exe nu a fost creat."
+            exit 1
+          }
+
+          if (-not (Test-Path "dist\itextsharp.dll")) {
+            Write-Error "itextsharp.dll nu a fost copiat."
+            exit 1
+          }
+
+          Write-Host "Aplicatia si motorul PDF au fost compilate cu succes."
+          Get-ChildItem "dist"
 
       - name: Instaleaza Inno Setup
         shell: powershell
@@ -41,7 +108,10 @@ jobs:
           Write-Host "Installere create:"
           Get-ChildItem -Path "output" -Filter "*.exe"
 
-          $installer = Get-ChildItem -Path "output" -Filter "OTL_Scadentar_Setup_*.exe" | Select-Object -First 1
+          $installer = Get-ChildItem `
+            -Path "output" `
+            -Filter "OTL_Scadentar_Setup_*.exe" |
+            Select-Object -First 1
 
           if (-not $installer) {
             Write-Error "Nu a fost gasit niciun installer OTL."
