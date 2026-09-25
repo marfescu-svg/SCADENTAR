@@ -11,6 +11,7 @@ using System.Xml.Linq;
 using System.Xml.Serialization;
 using iTextSharp.text.pdf;
 using iTextSharp.text.pdf.parser;
+using Path = System.IO.Path;
 
 namespace ScadentarTransportatori {
 [Serializable] public class Invoice {
@@ -118,7 +119,7 @@ public class ReceivablesForm:Form {
   if(Path.GetExtension(o.FileName).Equals(".pdf",StringComparison.OrdinalIgnoreCase)) ImportPdfBalanta(o.FileName); else ImportCsvFile(o.FileName,true);
  }
  void ImportPdfBalanta(string path){
-  // 4.2.2: citire PDF directa cu iTextSharp. Fara Word, fara conversie si fara timeout.
+  // 4.2.4: citire PDF directa cu iTextSharp. Fara Word, fara conversie si fara timeout.
   try{
    var rows=ReadBalancePdfDirect(path);
    if(rows.Count==0){MessageBox.Show("PDF-ul a fost citit, dar nu am identificat facturi in coloana FACTURI FINAL.\nBaza de date nu a fost modificata.","Import balanta PDF",MessageBoxButtons.OK,MessageBoxIcon.Warning);return;}
@@ -130,7 +131,7 @@ public class ReceivablesForm:Form {
   using(var reader=new PdfReader(path)){
    for(int page=1;page<=reader.NumberOfPages;page++){
     var listener=new OtlPdfPositionListener();
-    PdfTextExtractor.GetTextFromPage(reader,page,listener);
+    new PdfReaderContentParser(reader).ProcessContent(page, listener);
     float width=reader.GetPageSize(page).Width;
     // Raportul contabil are coloanele: precedent | curent | incasari | FINAL | denumire.
     // Selectam geometric FACTURI FINAL si DENUMIRE, nu dupa ordinea textului extras.
