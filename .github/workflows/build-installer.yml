@@ -1,0 +1,40 @@
+name: Build OTL Scadentar Installer
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'src/**'
+      - 'installer/**'
+      - '.github/workflows/build-installer.yml'
+
+jobs:
+  build:
+    runs-on: windows-2022
+
+    steps:
+      - name: Descarca proiectul
+        uses: actions/checkout@v4
+
+      - name: Compileaza OTL Scadentar
+        shell: cmd
+        run: |
+          if not exist dist mkdir dist
+          %WINDIR%\Microsoft.NET\Framework64\v4.0.30319\csc.exe /nologo /target:winexe /platform:x64 /optimize+ /out:"dist\OTL Scadentar.exe" /reference:System.dll /reference:System.Core.dll /reference:System.Windows.Forms.dll /reference:System.Drawing.dll /reference:System.Xml.dll /reference:System.Xml.Linq.dll /reference:System.IO.Compression.dll /reference:System.IO.Compression.FileSystem.dll /reference:Microsoft.VisualBasic.dll "src\ScadentarTransportatori.cs"
+
+      - name: Instaleaza Inno Setup
+        shell: powershell
+        run: choco install innosetup --no-progress -y
+
+      - name: Creeaza installerul
+        shell: cmd
+        run: |
+          "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "installer\OTL-Scadentar.iss"
+
+      - name: Salveaza installerul
+        uses: actions/upload-artifact@v4
+        with:
+          name: OTL-Scadentar-Setup-3.2
+          path: output/OTL_Scadentar_Setup_3.2.exe
