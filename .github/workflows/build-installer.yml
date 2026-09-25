@@ -2,6 +2,7 @@ name: Build OTL Scadentar Installer
 
 on:
   workflow_dispatch:
+
   push:
     branches:
       - main
@@ -26,16 +27,27 @@ jobs:
 
       - name: Instaleaza Inno Setup
         shell: powershell
-        run: choco install innosetup --no-progress -y
+        run: |
+          choco install innosetup --no-progress -y
 
-      - name: Creeaza installerul
+      - name: Creeaza installerul OTL 4.0
         shell: cmd
         run: |
           "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "installer\OTL-Scadentar.iss"
 
+      - name: Verifica installerul
+        shell: powershell
+        run: |
+          Write-Host "Continut folder output:"
+          Get-ChildItem -Path "output" -Recurse
+          if (-not (Test-Path "output\OTL_Scadentar_Setup_4.0.exe")) {
+            Write-Error "Installerul OTL_Scadentar_Setup_4.0.exe nu a fost gasit."
+            exit 1
+          }
+
       - name: Salveaza installerul
-  uses: actions/upload-artifact@v4
-  with:
-    name: OTL-Scadentar-Setup-4.0
-    path: output/OTL_Scadentar_Setup_4.0.exe
-    if-no-files-found: error
+        uses: actions/upload-artifact@v4
+        with:
+          name: OTL-Scadentar-Setup-4.0
+          path: output/OTL_Scadentar_Setup_4.0.exe
+          if-no-files-found: error
