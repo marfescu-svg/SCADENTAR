@@ -26,10 +26,10 @@ jobs:
 
           Invoke-WebRequest `
             -Uri "https://www.nuget.org/api/v2/package/iTextSharp/5.5.13.3" `
-            -OutFile "packages\itextsharp.nupkg"
+            -OutFile "packages\itextsharp.zip"
 
           Expand-Archive `
-            -Path "packages\itextsharp.nupkg" `
+            -Path "packages\itextsharp.zip" `
             -DestinationPath "packages\itextsharp" `
             -Force
 
@@ -46,7 +46,7 @@ jobs:
 
           Copy-Item $dll.FullName "packages\itextsharp.dll" -Force
 
-          Write-Host "iTextSharp gasit:"
+          Write-Host "iTextSharp descarcat si pregatit cu succes:"
           Write-Host $dll.FullName
 
       - name: Compileaza OTL Scadentar
