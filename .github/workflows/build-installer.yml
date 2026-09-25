@@ -30,7 +30,7 @@ jobs:
         run: |
           choco install innosetup --no-progress -y
 
-      - name: Creeaza installerul OTL 4.0
+      - name: Creeaza installerul OTL 4.1
         shell: cmd
         run: |
           "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "installer\OTL-Scadentar.iss"
@@ -40,14 +40,17 @@ jobs:
         run: |
           Write-Host "Continut folder output:"
           Get-ChildItem -Path "output" -Recurse
-          if (-not (Test-Path "output\OTL_Scadentar_Setup_4.0.exe")) {
-            Write-Error "Installerul OTL_Scadentar_Setup_4.0.exe nu a fost gasit."
+
+          if (-not (Test-Path "output\OTL_Scadentar_Setup_4.1.exe")) {
+            Write-Error "Installerul OTL_Scadentar_Setup_4.1.exe nu a fost gasit."
             exit 1
           }
+
+          Write-Host "Installer OTL Scadentar 4.1 creat cu succes!"
 
       - name: Salveaza installerul
         uses: actions/upload-artifact@v4
         with:
-          name: OTL-Scadentar-Setup-4.0
-          path: output/OTL_Scadentar_Setup_4.0.exe
+          name: OTL-Scadentar-Setup-4.1
+          path: output/OTL_Scadentar_Setup_4.1.exe
           if-no-files-found: error
