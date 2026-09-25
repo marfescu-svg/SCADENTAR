@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Drawing;
@@ -116,24 +116,51 @@ public class ReceivablesForm:Form {
   if(Path.GetExtension(o.FileName).Equals(".pdf",StringComparison.OrdinalIgnoreCase)) ImportPdfBalanta(o.FileName); else ImportCsvFile(o.FileName,true);
  }
  void ImportPdfBalanta(string path){
-  string txt=null,temp=Path.Combine(Path.GetTempPath(),"otl_balanta_"+Guid.NewGuid().ToString("N")+".txt");
-  object word=null,doc=null;
+  // 4.2.1: conversia PDF ruleaza pe un fir STA separat. Interfata ramane activa,
+  // iar dupa 60 secunde importul este oprit controlat in loc sa blocheze aplicatia.
+  string txt=null,err=null,temp=Path.Combine(Path.GetTempPath(),"otl_balanta_"+Guid.NewGuid().ToString("N")+".txt");
+  bool done=false; var before=new HashSet<int>(System.Diagnostics.Process.GetProcessesByName("WINWORD").Select(p=>p.Id));
+  var wait=new Form{Text="OTL • Import balanta PDF",Width=430,Height=155,StartPosition=FormStartPosition.CenterParent,FormBorderStyle=FormBorderStyle.FixedDialog,MaximizeBox=false,MinimizeBox=false,ControlBox=false};
+  var info=new Label{Text="Se analizeaza balanta PDF...\nDocumentul este procesat local. Te rog asteapta.",AutoSize=false,Dock=DockStyle.Fill,TextAlign=ContentAlignment.MiddleCenter,Font=new Font("Segoe UI",10,FontStyle.Bold)}; wait.Controls.Add(info);
+  var worker=new System.Threading.Thread(()=>{
+   object word=null,doc=null;
+   try{
+    var t=Type.GetTypeFromProgID("Word.Application");
+    if(t==null)throw new Exception("Microsoft Word nu este instalat. Pentru PDF este necesar Word; poti importa si CSV/TXT.");
+    word=Activator.CreateInstance(t); t.InvokeMember("Visible",System.Reflection.BindingFlags.SetProperty,null,word,new object[]{false});
+    t.InvokeMember("DisplayAlerts",System.Reflection.BindingFlags.SetProperty,null,word,new object[]{0});
+    object docs=t.InvokeMember("Documents",System.Reflection.BindingFlags.GetProperty,null,word,null);
+    doc=docs.GetType().InvokeMember("Open",System.Reflection.BindingFlags.InvokeMethod,null,docs,new object[]{path,false,true});
+    doc.GetType().InvokeMember("SaveAs2",System.Reflection.BindingFlags.InvokeMethod,null,doc,new object[]{temp,2});
+    doc.GetType().InvokeMember("Close",System.Reflection.BindingFlags.InvokeMethod,null,doc,new object[]{false}); doc=null;
+    t.InvokeMember("Quit",System.Reflection.BindingFlags.InvokeMethod,null,word,new object[]{false}); word=null;
+    txt=File.ReadAllText(temp,System.Text.Encoding.Default);
+   }catch(Exception ex){err=ex.InnerException!=null?ex.InnerException.Message:ex.Message;}
+   finally{
+    try{if(doc!=null)doc.GetType().InvokeMember("Close",System.Reflection.BindingFlags.InvokeMethod,null,doc,new object[]{false});}catch{}
+    try{if(word!=null)word.GetType().InvokeMember("Quit",System.Reflection.BindingFlags.InvokeMethod,null,word,new object[]{false});}catch{}
+    try{if(File.Exists(temp))File.Delete(temp);}catch{}
+    done=true;
+   }
+  });
+  worker.IsBackground=true; worker.SetApartmentState(System.Threading.ApartmentState.STA); worker.Start();
+  var started=DateTime.Now; var timer=new System.Windows.Forms.Timer{Interval=250};
+  timer.Tick+=(s,e)=>{
+   if(done){timer.Stop();wait.Close();return;}
+   if((DateTime.Now-started).TotalSeconds>=60){
+    timer.Stop(); err="Importul PDF a depasit 60 de secunde si a fost oprit. Baza de date nu a fost modificata.";
+    try{foreach(var p in System.Diagnostics.Process.GetProcessesByName("WINWORD"))if(!before.Contains(p.Id))p.Kill();}catch{}
+    wait.Close();
+   }
+  };
+  timer.Start(); wait.ShowDialog(this); timer.Stop();
+  if(!done && err!=null){MessageBox.Show(err,"Import balanta PDF",MessageBoxButtons.OK,MessageBoxIcon.Warning);return;}
+  if(!string.IsNullOrWhiteSpace(err)){MessageBox.Show("Importul PDF nu a reusit: "+err+"\n\nBaza de date nu a fost modificata.","Import balanta PDF",MessageBoxButtons.OK,MessageBoxIcon.Error);return;}
   try{
-   var t=Type.GetTypeFromProgID("Word.Application");
-   if(t==null){MessageBox.Show("Pentru import direct PDF este necesar Microsoft Word instalat.\n\nAlternativ, exporta balanta din contabilitate ca TXT/CSV si foloseste acelasi buton.","Import balanta PDF",MessageBoxButtons.OK,MessageBoxIcon.Information);return;}
-   word=Activator.CreateInstance(t); t.InvokeMember("Visible",System.Reflection.BindingFlags.SetProperty,null,word,new object[]{false});
-   object docs=t.InvokeMember("Documents",System.Reflection.BindingFlags.GetProperty,null,word,null);
-   doc=docs.GetType().InvokeMember("Open",System.Reflection.BindingFlags.InvokeMethod,null,docs,new object[]{path});
-   // wdFormatText = 2. Word face conversia PDF-ului in text local, fara trimiterea documentului pe internet.
-   doc.GetType().InvokeMember("SaveAs2",System.Reflection.BindingFlags.InvokeMethod,null,doc,new object[]{temp,2});
-   doc.GetType().InvokeMember("Close",System.Reflection.BindingFlags.InvokeMethod,null,doc,new object[]{false}); doc=null;
-   t.InvokeMember("Quit",System.Reflection.BindingFlags.InvokeMethod,null,word,new object[]{false}); word=null;
-   txt=File.ReadAllText(temp,System.Text.Encoding.Default);
    var rows=ParseAccountingBalanceText(txt);
    if(rows.Count==0){MessageBox.Show("PDF-ul a fost citit, dar nu am putut identifica automat randurile din coloana FACTURI FINAL.\nNu s-a modificat baza de date.","Import balanta",MessageBoxButtons.OK,MessageBoxIcon.Warning);return;}
    PreviewAndApply(rows,Path.GetFileName(path));
-  }catch(Exception ex){MessageBox.Show("Importul PDF nu a reusit: "+ex.Message+"\n\nPDF-ul nu a modificat baza de date.","Import balanta",MessageBoxButtons.OK,MessageBoxIcon.Error);}
-  finally{try{if(doc!=null)doc.GetType().InvokeMember("Close",System.Reflection.BindingFlags.InvokeMethod,null,doc,new object[]{false});}catch{}try{if(word!=null)word.GetType().InvokeMember("Quit",System.Reflection.BindingFlags.InvokeMethod,null,word,new object[]{false});}catch{}try{if(File.Exists(temp))File.Delete(temp);}catch{}}
+  }catch(Exception ex){MessageBox.Show("Analiza PDF-ului nu a reusit: "+ex.Message+"\n\nBaza de date nu a fost modificata.","Import balanta PDF",MessageBoxButtons.OK,MessageBoxIcon.Error);}
  }
  List<ReceivableItem> ParseAccountingBalanceText(string text){
   var result=new List<ReceivableItem>(); if(string.IsNullOrWhiteSpace(text))return result;
